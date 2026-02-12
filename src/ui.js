@@ -63,15 +63,29 @@ export function renderChat() {
     return;
   }
 
-  const messagesHtml = state.messages.map(msg => `
-    <div class="message message-${msg.role}">
-      <div class="message-header">
-        <span class="message-role">${msg.role}</span>
-        <span class="message-time">${formatTime(msg.timestamp)}</span>
+  const messagesHtml = state.messages.map(msg => {
+    // Extract text content from message
+    let textContent = '';
+    if (typeof msg.content === 'string') {
+      textContent = msg.content;
+    } else if (Array.isArray(msg.content)) {
+      // Content is array of blocks (Anthropic format)
+      const textBlocks = msg.content.filter(block => block.type === 'text');
+      textContent = textBlocks.map(block => block.text).join('\n');
+    } else if (msg.content?.text) {
+      textContent = msg.content.text;
+    }
+    
+    return `
+      <div class="message message-${msg.role}">
+        <div class="message-header">
+          <span class="message-role">${msg.role}</span>
+          <span class="message-time">${formatTime(msg.timestamp)}</span>
+        </div>
+        <div class="message-content">${escapeHtml(textContent)}</div>
       </div>
-      <div class="message-content">${escapeHtml(msg.content)}</div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 
   const sessionKey = state.selectedAgent.key || state.selectedAgent.sessionKey;
   const label = state.selectedAgent.displayName || state.selectedAgent.label || sessionKey;
