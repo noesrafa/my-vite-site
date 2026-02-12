@@ -88,28 +88,38 @@ export function renderChat() {
       }
       
       // Check if text contains MEDIA: references
-      const mediaRegex = /MEDIA:\s*([^\s]+\.(png|jpg|jpeg|gif|webp))/gi;
+      const mediaRegex = /MEDIA:\s*([^\s]+)/gi;
       let match;
       while ((match = mediaRegex.exec(textContent)) !== null) {
-        mediaItems.push({ type: 'image', url: match[1] });
+        let url = match[1];
+        // If it's a local file path, convert to /media/ URL
+        if (url.startsWith('/tmp/') || url.startsWith('/root/')) {
+          const filename = url.split('/').pop();
+          url = `/media/${filename}`;
+        }
+        mediaItems.push({ type: 'image', url });
         // Remove MEDIA: reference from text
         textContent = textContent.replace(match[0], '');
       }
       
-      // Also check for inline filenames (filename.png format)
-      const filenameRegex = /([a-zA-Z0-9_-]+\.(png|jpg|jpeg|gif|webp))/g;
-      const possibleFiles = textContent.match(filenameRegex);
-      if (possibleFiles && possibleFiles.length > 0) {
-        // Only add if it looks like a standalone filename (not in a sentence)
-        possibleFiles.forEach(filename => {
-          const regex = new RegExp(`(?:^|\\s)(${filename})(?:\\s|$)`, 'g');
-          if (regex.test(textContent)) {
-            // Use /media/ path for web access
-            mediaItems.push({ type: 'image', url: `/media/${filename}` });
-            // Remove filename from text content
-            textContent = textContent.replace(filename, '');
-          }
-        });
+      // Also check for standalone image filenames
+      // Match: word boundaries + filename with image extension
+      const filenameRegex = /\b([a-zA-Z0-9_-]+\.(png|jpg|jpeg|gif|webp))\b/gi;
+      const matches = textContent.matchAll(filenameRegex);
+      
+      for (const match of matches) {
+        const filename = match[1];
+        // Check if this looks like a standalone filename (not part of a path/URL)
+        const context = textContent.substring(Math.max(0, match.index - 20), match.index + filename.length + 20);
+        
+        // Skip if it's in a URL or path context
+        if (context.includes('http') || context.includes('://') || context.includes('/media/')) {
+          continue;
+        }
+        
+        mediaItems.push({ type: 'image', url: `/media/${filename}` });
+        // Remove from text
+        textContent = textContent.replace(filename, `[Image: ${filename}]`);
       }
       
       textContent = textContent.trim();
