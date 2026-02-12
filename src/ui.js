@@ -64,29 +64,37 @@ export function renderChat() {
     return;
   }
 
-  const messagesHtml = state.messages.map(msg => {
-    // Extract text content from message
-    let textContent = '';
-    if (typeof msg.content === 'string') {
-      textContent = msg.content;
-    } else if (Array.isArray(msg.content)) {
-      // Content is array of blocks (Anthropic format)
-      const textBlocks = msg.content.filter(block => block.type === 'text');
-      textContent = textBlocks.map(block => block.text).join('\n');
-    } else if (msg.content?.text) {
-      textContent = msg.content.text;
-    }
-    
-    return `
-      <div class="message message-${msg.role}">
-        <div class="message-header">
-          <span class="message-role">${msg.role}</span>
-          <span class="message-time">${formatTime(msg.timestamp)}</span>
+  const messagesHtml = state.messages
+    .map(msg => {
+      // Extract text content from message
+      let textContent = '';
+      if (typeof msg.content === 'string') {
+        textContent = msg.content;
+      } else if (Array.isArray(msg.content)) {
+        // Content is array of blocks (Anthropic format)
+        const textBlocks = msg.content.filter(block => block.type === 'text');
+        textContent = textBlocks.map(block => block.text).join('\n');
+      } else if (msg.content?.text) {
+        textContent = msg.content.text;
+      }
+      
+      // Skip messages with no text content (thinking, tool calls, etc.)
+      if (!textContent || textContent.trim().length === 0) {
+        return null;
+      }
+      
+      return `
+        <div class="message message-${msg.role}">
+          <div class="message-header">
+            <span class="message-role">${msg.role}</span>
+            <span class="message-time">${formatTime(msg.timestamp)}</span>
+          </div>
+          <div class="message-content">${escapeHtml(textContent)}</div>
         </div>
-        <div class="message-content">${escapeHtml(textContent)}</div>
-      </div>
-    `;
-  }).join('');
+      `;
+    })
+    .filter(html => html !== null)
+    .join('');
 
   const sessionKey = state.selectedAgent.key || state.selectedAgent.sessionKey;
   const agentId = extractAgentId(sessionKey);
@@ -143,7 +151,7 @@ async function handleAgentSelect(agent) {
 async function loadAgentHistory(sessionKey) {
   try {
     state.setLoading(true);
-    const result = await api.getHistory(sessionKey);
+    const result = await api.getHistory(sessionKey, 100); // Load more messages
     
     if (result?.messages) {
       state.setMessages(result.messages);
