@@ -22,14 +22,15 @@ export function renderAgentsList() {
 
   container.innerHTML = state.agents.map(agent => {
     const sessionKey = agent.key || agent.sessionKey;
-    const label = agent.displayName || agent.label || sessionKey;
+    const agentId = extractAgentId(sessionKey);
+    const label = getAgentName(agentId, sessionKey);
     const kind = agent.kind || 'unknown';
     const status = 'active'; // Assume active if we got it from the list
     
     return `
       <div class="agent-card ${state.selectedAgent?.key === sessionKey ? 'selected' : ''}" 
            data-session-key="${sessionKey}">
-        <div class="agent-avatar">${getAgentEmoji(agent)}</div>
+        <div class="agent-avatar">${getAgentEmoji(agent, agentId)}</div>
         <div class="agent-info">
           <h3>${label}</h3>
           <p class="agent-kind">${kind}</p>
@@ -88,7 +89,8 @@ export function renderChat() {
   }).join('');
 
   const sessionKey = state.selectedAgent.key || state.selectedAgent.sessionKey;
-  const label = state.selectedAgent.displayName || state.selectedAgent.label || sessionKey;
+  const agentId = extractAgentId(sessionKey);
+  const label = getAgentName(agentId, sessionKey);
   
   container.innerHTML = `
     <div class="chat-header">
@@ -214,14 +216,49 @@ export function renderError() {
 }
 
 /**
- * Get emoji for agent type
+ * Extract agent ID from session key
+ * Format: agent:<agentId>:<mainKey>
  */
-function getAgentEmoji(agent) {
-  const label = agent.displayName || agent.label || '';
-  const key = agent.key || agent.sessionKey || '';
+function extractAgentId(sessionKey) {
+  if (!sessionKey) return null;
+  const parts = sessionKey.split(':');
+  return parts.length >= 2 ? parts[1] : null;
+}
+
+/**
+ * Get friendly agent name from agentId
+ */
+function getAgentName(agentId, fallback) {
+  const nameMap = {
+    'main': 'Jarvis',
+    'cleo': 'Cleo'
+  };
   
-  if (label.toLowerCase().includes('jarvis') || key.includes('main')) return '😸';
-  if (agent.kind === 'main') return '👑';
+  if (agentId && nameMap[agentId]) {
+    return nameMap[agentId];
+  }
+  
+  // Capitalize agentId if available
+  if (agentId) {
+    return agentId.charAt(0).toUpperCase() + agentId.slice(1);
+  }
+  
+  return fallback || 'Unknown Agent';
+}
+
+/**
+ * Get emoji for agent
+ */
+function getAgentEmoji(agent, agentId) {
+  const emojiMap = {
+    'main': '😸',
+    'cleo': '🎨'
+  };
+  
+  if (agentId && emojiMap[agentId]) {
+    return emojiMap[agentId];
+  }
+  
   if (agent.kind === 'isolated') return '🤖';
   return '👤';
 }
