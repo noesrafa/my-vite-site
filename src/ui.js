@@ -242,7 +242,7 @@ async function handleSendMessage() {
       content: message,
       timestamp: new Date().toISOString()
     });
-    renderChat();
+    renderChat(true); // Scroll to user's message
 
     // Send to API
     const sessionKey = state.selectedAgent.key || state.selectedAgent.sessionKey;

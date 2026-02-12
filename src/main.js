@@ -20,7 +20,7 @@ async function init() {
   // Subscribe to state changes
   state.subscribe(() => {
     renderAgentsList();
-    renderChat();
+    renderChat(false); // Don't auto-scroll on state changes
     renderError();
   });
 
