@@ -42,6 +42,14 @@ class State {
   }
 
   /**
+   * Get selected agent session key
+   */
+  getSelectedSessionKey() {
+    if (!this.selectedAgent) return null;
+    return this.selectedAgent.key || this.selectedAgent.sessionKey;
+  }
+
+  /**
    * Set messages for selected agent
    */
   setMessages(messages) {

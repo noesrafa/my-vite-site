@@ -19,23 +19,30 @@ export function renderAgentsList() {
     return;
   }
 
-  container.innerHTML = state.agents.map(agent => `
-    <div class="agent-card ${state.selectedAgent?.sessionKey === agent.sessionKey ? 'selected' : ''}" 
-         data-session-key="${agent.sessionKey}">
-      <div class="agent-avatar">${getAgentEmoji(agent)}</div>
-      <div class="agent-info">
-        <h3>${agent.label || agent.sessionKey}</h3>
-        <p class="agent-kind">${agent.kind}</p>
-        <span class="agent-status status-${agent.status || 'unknown'}">${agent.status || 'unknown'}</span>
+  container.innerHTML = state.agents.map(agent => {
+    const sessionKey = agent.key || agent.sessionKey;
+    const label = agent.displayName || agent.label || sessionKey;
+    const kind = agent.kind || 'unknown';
+    const status = 'active'; // Assume active if we got it from the list
+    
+    return `
+      <div class="agent-card ${state.selectedAgent?.key === sessionKey ? 'selected' : ''}" 
+           data-session-key="${sessionKey}">
+        <div class="agent-avatar">${getAgentEmoji(agent)}</div>
+        <div class="agent-info">
+          <h3>${label}</h3>
+          <p class="agent-kind">${kind}</p>
+          <span class="agent-status status-${status}">${status}</span>
+        </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 
   // Add click handlers
   container.querySelectorAll('.agent-card').forEach(card => {
     card.addEventListener('click', () => {
       const sessionKey = card.dataset.sessionKey;
-      const agent = state.agents.find(a => a.sessionKey === sessionKey);
+      const agent = state.agents.find(a => (a.key || a.sessionKey) === sessionKey);
       if (agent) {
         handleAgentSelect(agent);
       }
@@ -65,9 +72,12 @@ export function renderChat() {
     </div>
   `).join('');
 
+  const sessionKey = state.selectedAgent.key || state.selectedAgent.sessionKey;
+  const label = state.selectedAgent.displayName || state.selectedAgent.label || sessionKey;
+  
   container.innerHTML = `
     <div class="chat-header">
-      <h2>${state.selectedAgent.label || state.selectedAgent.sessionKey}</h2>
+      <h2>${label}</h2>
       <button id="refresh-chat" class="btn-icon">🔄</button>
     </div>
     <div class="messages-container" id="messages">
@@ -92,7 +102,8 @@ export function renderChat() {
   });
   document.getElementById('refresh-chat')?.addEventListener('click', () => {
     if (state.selectedAgent) {
-      loadAgentHistory(state.selectedAgent.sessionKey);
+      const sessionKey = state.selectedAgent.key || state.selectedAgent.sessionKey;
+      loadAgentHistory(sessionKey);
     }
   });
 }
@@ -105,7 +116,8 @@ async function handleAgentSelect(agent) {
   renderAgentsList();
   renderChat();
   
-  await loadAgentHistory(agent.sessionKey);
+  const sessionKey = agent.key || agent.sessionKey;
+  await loadAgentHistory(sessionKey);
 }
 
 /**
@@ -147,7 +159,8 @@ async function handleSendMessage() {
     renderChat();
 
     // Send to API
-    const result = await api.sendMessage(state.selectedAgent.sessionKey, message);
+    const sessionKey = state.selectedAgent.key || state.selectedAgent.sessionKey;
+    const result = await api.sendMessage(sessionKey, message);
     
     // Add assistant response
     if (result?.reply) {
@@ -189,7 +202,10 @@ export function renderError() {
  * Get emoji for agent type
  */
 function getAgentEmoji(agent) {
-  if (agent.label?.toLowerCase().includes('jarvis')) return '😸';
+  const label = agent.displayName || agent.label || '';
+  const key = agent.key || agent.sessionKey || '';
+  
+  if (label.toLowerCase().includes('jarvis') || key.includes('main')) return '😸';
   if (agent.kind === 'main') return '👑';
   if (agent.kind === 'isolated') return '🤖';
   return '👤';
