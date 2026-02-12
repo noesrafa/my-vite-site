@@ -173,10 +173,12 @@ export function renderChat() {
     </div>
   `;
 
-  // Scroll to bottom
-  const messagesDiv = document.getElementById('messages');
-  if (messagesDiv) {
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  // Only scroll to bottom if explicitly requested (new message sent)
+  if (shouldScroll) {
+    const messagesDiv = document.getElementById('messages');
+    if (messagesDiv) {
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
   }
 
   // Add event listeners
@@ -187,7 +189,7 @@ export function renderChat() {
   document.getElementById('refresh-chat')?.addEventListener('click', () => {
     if (state.selectedAgent) {
       const sessionKey = state.selectedAgent.key || state.selectedAgent.sessionKey;
-      loadAgentHistory(sessionKey);
+      loadAgentHistory(sessionKey, false); // Don't auto-scroll on manual refresh
     }
   });
 }
@@ -198,7 +200,7 @@ export function renderChat() {
 async function handleAgentSelect(agent) {
   state.selectAgent(agent);
   renderAgentsList();
-  renderChat();
+  renderChat(true); // Scroll on first load
   
   const sessionKey = agent.key || agent.sessionKey;
   await loadAgentHistory(sessionKey);
@@ -207,14 +209,14 @@ async function handleAgentSelect(agent) {
 /**
  * Load agent history
  */
-async function loadAgentHistory(sessionKey) {
+async function loadAgentHistory(sessionKey, shouldScroll = false) {
   try {
     state.setLoading(true);
     const result = await api.getHistory(sessionKey, 100); // Load more messages
     
     if (result?.messages) {
       state.setMessages(result.messages);
-      renderChat();
+      renderChat(shouldScroll);
     }
   } catch (error) {
     state.setError(`Failed to load history: ${error.message}`);
@@ -253,7 +255,7 @@ async function handleSendMessage() {
         content: result.reply,
         timestamp: new Date().toISOString()
       });
-      renderChat();
+      renderChat(true); // Scroll to new message
     }
   } catch (error) {
     state.setError(`Failed to send message: ${error.message}`);
