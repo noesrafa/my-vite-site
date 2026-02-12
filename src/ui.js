@@ -114,10 +114,10 @@ async function handleAgentSelect(agent) {
 async function loadAgentHistory(sessionKey) {
   try {
     state.setLoading(true);
-    const response = await api.getHistory(sessionKey);
+    const result = await api.getHistory(sessionKey);
     
-    if (response.ok && response.result?.messages) {
-      state.setMessages(response.result.messages);
+    if (result?.messages) {
+      state.setMessages(result.messages);
       renderChat();
     }
   } catch (error) {
@@ -147,13 +147,13 @@ async function handleSendMessage() {
     renderChat();
 
     // Send to API
-    const response = await api.sendMessage(state.selectedAgent.sessionKey, message);
+    const result = await api.sendMessage(state.selectedAgent.sessionKey, message);
     
     // Add assistant response
-    if (response.ok && response.result?.reply) {
+    if (result?.reply) {
       state.addMessage({
         role: 'assistant',
-        content: response.result.reply,
+        content: result.reply,
         timestamp: new Date().toISOString()
       });
       renderChat();

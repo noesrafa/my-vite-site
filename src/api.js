@@ -8,28 +8,45 @@ class OpenClawAPI {
   }
 
   /**
-   * Make authenticated request to Gateway
+   * Invoke a tool via Gateway /tools/invoke endpoint
    */
-  async request(endpoint, options = {}) {
-    const url = `${this.baseUrl}${endpoint}`;
+  async invokeTool(tool, args = {}, action = null) {
+    const url = `${this.baseUrl}/tools/invoke`;
     
-    const headers = {
-      'Content-Type': 'application/json',
-      ...(this.token && { 'Authorization': `Bearer ${this.token}` }),
-      ...options.headers
+    const body = {
+      tool,
+      args,
+      ...(action && { action })
     };
 
     try {
       const response = await fetch(url, {
-        ...options,
-        headers
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.token}`
+        },
+        body: JSON.stringify(body)
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Unauthorized: Invalid token');
+        }
+        if (response.status === 404) {
+          throw new Error(`Tool '${tool}' not available`);
+        }
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      
+      if (!data.ok) {
+        throw new Error(data.error?.message || 'Tool invocation failed');
+      }
+
+      // Return parsed details if available, otherwise raw result
+      return data.result?.details || data.result;
     } catch (error) {
       console.error('API request failed:', error);
       throw error;
@@ -40,26 +57,27 @@ class OpenClawAPI {
    * Get list of sessions (agents)
    */
   async getSessions(limit = 50) {
-    return await this.request(`${config.endpoints.sessions}?limit=${limit}`);
+    return await this.invokeTool('sessions_list', { limit });
   }
 
   /**
    * Get session history
    */
   async getHistory(sessionKey, limit = 100) {
-    return await this.request(config.endpoints.sessionHistory(sessionKey) + `?limit=${limit}`);
+    return await this.invokeTool('sessions_history', {
+      sessionKey,
+      limit
+    });
   }
 
   /**
    * Send message to session
    */
   async sendMessage(sessionKey, message, timeoutSeconds = 60) {
-    return await this.request(config.endpoints.sessionSend(sessionKey), {
-      method: 'POST',
-      body: JSON.stringify({
-        message,
-        timeoutSeconds
-      })
+    return await this.invokeTool('sessions_send', {
+      sessionKey,
+      message,
+      timeoutSeconds
     });
   }
 
@@ -67,23 +85,22 @@ class OpenClawAPI {
    * Get session status
    */
   async getStatus(sessionKey) {
-    return await this.request(config.endpoints.sessionStatus(sessionKey));
+    return await this.invokeTool('session_status', {
+      sessionKey
+    });
   }
 
   /**
    * Spawn new sub-agent
    */
   async spawnAgent(task, options = {}) {
-    return await this.request(config.endpoints.sessionSpawn, {
-      method: 'POST',
-      body: JSON.stringify({
-        task,
-        label: options.label,
-        model: options.model,
-        agentId: options.agentId || 'default',
-        runTimeoutSeconds: options.runTimeoutSeconds,
-        cleanup: options.cleanup || 'keep'
-      })
+    return await this.invokeTool('sessions_spawn', {
+      task,
+      label: options.label,
+      model: options.model,
+      agentId: options.agentId || 'default',
+      runTimeoutSeconds: options.runTimeoutSeconds,
+      cleanup: options.cleanup || 'keep'
     });
   }
 }

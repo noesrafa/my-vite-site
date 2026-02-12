@@ -39,10 +39,10 @@ async function init() {
 async function loadAgents() {
   try {
     state.setLoading(true);
-    const response = await api.getSessions();
+    const result = await api.getSessions();
     
-    if (response.ok && response.result?.sessions) {
-      state.setAgents(response.result.sessions);
+    if (result?.sessions) {
+      state.setAgents(result.sessions);
     } else {
       throw new Error('Invalid response from Gateway');
     }
