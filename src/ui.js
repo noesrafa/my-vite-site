@@ -9,12 +9,13 @@ export function renderAgentsList() {
   const container = document.getElementById('agents-list');
   if (!container) return;
 
-  if (state.isLoading) {
+  // Only show loading on first load (when we have no agents yet)
+  if (state.isLoading && state.agents.length === 0) {
     container.innerHTML = '<div class="loading">Loading agents...</div>';
     return;
   }
 
-  if (state.agents.length === 0) {
+  if (!state.isLoading && state.agents.length === 0) {
     container.innerHTML = '<div class="empty">No agents found</div>';
     return;
   }
