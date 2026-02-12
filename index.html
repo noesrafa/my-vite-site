@@ -1,13 +1,39 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>my-vite-site</title>
+    <title>🎮 OpenClaw Agent Viewer</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <header class="app-header">
+        <h1>🎮 OpenClaw Agent Viewer</h1>
+        <div class="header-stats">
+          <span id="agent-count">Loading...</span>
+        </div>
+      </header>
+
+      <main class="app-main">
+        <aside class="sidebar">
+          <div class="sidebar-header">
+            <h2>Agents</h2>
+            <button id="refresh-agents" class="btn-icon" title="Refresh">🔄</button>
+          </div>
+          <div id="agents-list" class="agents-list">
+            <div class="loading">Loading agents...</div>
+          </div>
+        </aside>
+
+        <section class="content">
+          <div id="chat-container" class="chat-container">
+            <div class="empty">Select an agent to start chatting</div>
+          </div>
+        </section>
+      </main>
+    </div>
+
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
