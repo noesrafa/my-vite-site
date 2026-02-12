@@ -1,6 +1,7 @@
 // UI Components and rendering
 import { state } from './state.js';
 import { api } from './api.js';
+import { marked } from 'marked';
 
 /**
  * Render agents list
@@ -66,22 +67,69 @@ export function renderChat() {
 
   const messagesHtml = state.messages
     .map(msg => {
-      // Extract text content from message
+      // Extract text and media content from message
       let textContent = '';
+      let mediaItems = [];
+      
       if (typeof msg.content === 'string') {
         textContent = msg.content;
       } else if (Array.isArray(msg.content)) {
         // Content is array of blocks (Anthropic format)
-        const textBlocks = msg.content.filter(block => block.type === 'text');
-        textContent = textBlocks.map(block => block.text).join('\n');
+        msg.content.forEach(block => {
+          if (block.type === 'text') {
+            textContent += block.text + '\n';
+          } else if (block.type === 'image') {
+            // Extract image source from text content or block
+            mediaItems.push({ type: 'image', data: block });
+          }
+        });
       } else if (msg.content?.text) {
         textContent = msg.content.text;
       }
       
+      // Check if text contains MEDIA: references
+      const mediaRegex = /MEDIA:\s*([^\s]+\.(png|jpg|jpeg|gif|webp))/gi;
+      let match;
+      while ((match = mediaRegex.exec(textContent)) !== null) {
+        mediaItems.push({ type: 'image', url: match[1] });
+        // Remove MEDIA: reference from text
+        textContent = textContent.replace(match[0], '');
+      }
+      
+      // Also check for inline filenames (filename.png format)
+      const filenameRegex = /([a-zA-Z0-9_-]+\.(png|jpg|jpeg|gif|webp))/g;
+      const possibleFiles = textContent.match(filenameRegex);
+      if (possibleFiles && possibleFiles.length > 0) {
+        // Only add if it looks like a standalone filename (not in a sentence)
+        possibleFiles.forEach(filename => {
+          const regex = new RegExp(`(?:^|\\s)(${filename})(?:\\s|$)`, 'g');
+          if (regex.test(textContent)) {
+            // Use /media/ path for web access
+            mediaItems.push({ type: 'image', url: `/media/${filename}` });
+            // Remove filename from text content
+            textContent = textContent.replace(filename, '');
+          }
+        });
+      }
+      
+      textContent = textContent.trim();
+      
       // Skip messages with no text content (thinking, tool calls, etc.)
       if (!textContent || textContent.trim().length === 0) {
-        return null;
+        if (mediaItems.length === 0) return null;
       }
+      
+      // Render markdown to HTML
+      const htmlContent = textContent ? marked.parse(textContent) : '';
+      
+      // Build media HTML
+      const mediaHtml = mediaItems.map(item => {
+        if (item.type === 'image') {
+          const src = item.url || item.data?.source || '';
+          return `<img src="${src}" alt="Image" class="message-image" />`;
+        }
+        return '';
+      }).join('');
       
       return `
         <div class="message message-${msg.role}">
@@ -89,7 +137,8 @@ export function renderChat() {
             <span class="message-role">${msg.role}</span>
             <span class="message-time">${formatTime(msg.timestamp)}</span>
           </div>
-          <div class="message-content">${escapeHtml(textContent)}</div>
+          <div class="message-content">${htmlContent}</div>
+          ${mediaHtml ? `<div class="message-media">${mediaHtml}</div>` : ''}
         </div>
       `;
     })
